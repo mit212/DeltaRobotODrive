@@ -5,6 +5,13 @@ Created on Thu Jul 18 15:19:02 2018
 @author: beeman
 """
 
+
+"""
+Modified on Feb 14, 2019
+
+@author: dgonz
+"""
+
 """
 helpful odrive functions for xrl state machine
 """
@@ -169,8 +176,8 @@ def full_init(reset = True):
             odrvs[leg][joint].axis0.motor.config.pole_pairs = 4
             odrvs[leg][joint].axis1.motor.config.pole_pairs = 4
 
-            odrvs[leg][joint].axis0.controller.config.vel_limit = 40000 #50000 counts/second, or 1/8 revolution per second
-            odrvs[leg][joint].axis1.controller.config.vel_limit = 40000 
+            odrvs[leg][joint].axis0.controller.config.vel_limit = 600000 #50000 counts/second is 1/8 revolution per second
+            odrvs[leg][joint].axis1.controller.config.vel_limit = 600000 
             # 0.0612 [(revolutions/second)/Volt], 400000 counts per revolution
             # Max speed is 1.35 Revolutions/second, or 539000counts/second
             odrvs[leg][joint].axis0.motor.config.motor_type = MOTOR_TYPE_HIGH_CURRENT
@@ -204,7 +211,8 @@ def full_init(reset = True):
             errorFlag = 0
             if odrvs[leg][joint] == None:
                 continue
-            
+            odrvs[leg][joint].axis0.motor.config.pre_calibrated = True
+            odrvs[leg][joint].axis1.motor.config.pre_calibrated = True
             odrvs[leg][joint].axis0.encoder.config.pre_calibrated = True
             odrvs[leg][joint].axis0.config.startup_encoder_index_search = True
             odrvs[leg][joint].axis1.encoder.config.pre_calibrated = True
@@ -215,7 +223,7 @@ def full_init(reset = True):
             #odrvs[leg][joint].axis1.controller.set_current_controller_bandwidth(157)
 
             #Set closed loop gains
-            kP_des = Nm2A*5
+            kP_des = Nm2A*0.25 #2 Nm/rad
             kD_des = Nm2A*1
 
             odrvs[leg][joint].axis0.controller.config.pos_gain = kP_des/kD_des #Convert to Cascaded Gain Structure
@@ -233,14 +241,17 @@ def full_init(reset = True):
             odrvs[leg][joint].axis1.config.startup_closed_loop_control = True
             # save configuration
             odrvs[leg][joint].save_configuration()
-            printErrorStates()
             time.sleep(2)
-            try:
-                odrvs[leg][joint].reboot()
-                break
-            except:
-                print('Rebooted ',joint)
-                
+            printErrorStates()
+    try:
+        odrvs[0][0].reboot()
+    except:
+        print('Rebooted 0')
+    try:
+        odrvs[0][1].reboot()
+    except:
+        print('Rebooted 1')
+    time.sleep(5)
     print("Done initializing! Reconnecting...")
     connect_all()
 
