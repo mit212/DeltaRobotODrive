@@ -54,249 +54,189 @@ velActual =   [[[0,0],[0,0],[0,0]],[[0,0], [0,0], [0,0]]]
 curCommand = [[[0,0],[0,0],[0,0]],[[0,0], [0,0], [0,0]]]
 myLogger = dataLogger('data.txt')
 
-odrvs = [[None, None]]
+odrvs = [None, None]
 '''[[ODrive 0, ODrive 1]]'''
-usb_serials = [['2087377B3548', '208637853548']]
+usb_serials = ['2087377B3548', '208637853548']
+axes = [None, None, None]
 
 def print_controllers():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            print(odrvs[leg][joint].axis0.controller)
-            print(odrvs[leg][joint].axis1.controller)
+    for axis in axes:
+        print(axis.controller)
 
 def print_encoders():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            print(odrvs[leg][joint].axis0.encoder)
-            print(odrvs[leg][joint].axis1.encoder)
+    for axis in axes:
+        print(axis.encoder)
 
 def printErrorStates():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            print('leg',leg, ' joint',joint, ' axis0 error:',hex(odrvs[leg][joint].axis0.error))
-            print('leg',leg, ' joint',joint, ' axis1 error:',hex(odrvs[leg][joint].axis1.error))
-            print('leg',leg, ' joint',joint, ' motor0 error:',hex(odrvs[leg][joint].axis0.motor.error))
-            print('leg',leg, ' joint',joint, ' motor1 error:',hex(odrvs[leg][joint].axis1.motor.error))
-            print('leg',leg, ' joint',joint, ' encoder0 error:',hex(odrvs[leg][joint].axis0.encoder.error))
-            print('leg',leg, ' joint',joint, ' encoder1 error:',hex(odrvs[leg][joint].axis1.encoder.error))
+    ii = 0
+    for axis in axes:
+        print(axis.controller)
+        print('axis',ii, ' axis error:',hex(axis.error))
+        print('axis',ii, ' motor error:',hex(axis.motor.error))
+        print('axis',ii, ' encoder error:',hex(axis.encoder.error))
+        ii+=1
 def print_all():
     printErrorStates()
     print_encoders()
     print_controllers()
 
 def connect_all():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if usb_serials[leg][joint] == None:
-                continue
-            print("finding odrive: " + usb_serials[leg][joint] + "...")
-            odrvs[leg][joint] = odrive.find_any(serial_number = usb_serials[leg][joint])
-            print("found odrive! leg: " + str(leg) + ", joint: " + str(joint))
+    for ii in range(len(odrvs)):
+        if usb_serials[ii] == None:
+            continue
+        print("finding odrive: " + usb_serials[ii]+ "...")
+        odrvs[ii]= odrive.find_any(serial_number = usb_serials[ii])
+        print("found odrive! " + str(ii))
+    axes[0] = odrvs[0].axis0
+    axes[1] = odrvs[0].axis1
+    axes[2] = odrvs[1].axis0
+
 connect_all()
 
 def test_all(amt = 100000, mytime = 5):
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.pos_setpoint = 0
-            odrvs[leg][joint].axis1.controller.pos_setpoint = 0
+    for axis in axes:
+        axis.controller.pos_setpoint = 0
     print_all()
     time.sleep(mytime)
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.pos_setpoint = amt
-            odrvs[leg][joint].axis1.controller.pos_setpoint = amt
+
+    for axis in axes:
+        axis.controller.pos_setpoint = amt
     print_all()
     time.sleep(mytime)
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.pos_setpoint = 0
-            odrvs[leg][joint].axis1.controller.pos_setpoint = 0
+
+    for axis in axes:
+        axis.controller.pos_setpoint = 0
     print_all()
+    time.sleep(mytime)   
+
+    for axis in axes:
+        axis.controller.pos_setpoint = 0
     time.sleep(mytime)
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.pos_setpoint = amt
-            odrvs[leg][joint].axis1.controller.pos_setpoint = amt
-    print_all()
-    time.sleep(mytime)
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.pos_setpoint = 0
-            odrvs[leg][joint].axis1.controller.pos_setpoint = 0
 #test_all()
 
 def set_gains(k_p, k_d, perm = True):
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if(k_d != 0):
-                odrvs[leg][joint].axis0.controller.config.pos_gain = Nm2A*k_p/k_d
-                odrvs[leg][joint].axis1.controller.config.pos_gain = Nm2A*k_p/k_d
-                odrvs[leg][joint].axis0.controller.config.vel_gain = k_d*Nm2A
-                odrvs[leg][joint].axis1.controller.config.vel_gain = k_d*Nm2A
-                if(perm):
-                    odrvs[leg][joint].save_configuration()
-                    time.sleep(2)
+    for axis in axes:
+        if(k_d != 0):
+            axis.controller.config.pos_gain = Nm2A*k_p/k_d
+            axis.controller.config.vel_gain = k_d*Nm2A
+    if(perm):
+        odrvs[0].save_configuration()
+        odrvs[1].save_configuration()
+        time.sleep(2)
     
 
-def set_gainsCounts(k_p, k_d):
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            odrvs[leg][joint].axis0.controller.config.pos_gain = k_p
-            odrvs[leg][joint].axis1.controller.config.pos_gain = k_p
-            odrvs[leg][joint].axis0.controller.config.vel_gain = k_d
-            odrvs[leg][joint].axis1.controller.config.vel_gain = k_d
-            odrvs[leg][joint].save_configuration()
-    time.sleep(2)
+def set_gainsCounts(k_p, k_d,perm = True):
+    for axis in axes:
+        if(k_d != 0):
+            axis.controller.config.pos_gain = k_p
+            axis.controller.config.vel_gain = k_d
+    if(perm):
+        odrvs[0].save_configuration()
+        odrvs[1].save_configuration()
+        time.sleep(2)
 
 def full_init(reset = True):
-    if(reset):
-        for leg in range(len(odrvs)):
-            for joint in range(len(odrvs[0])):
-                if odrvs[leg][joint] == None:
-                    continue
-                odrvs[leg][joint].axis0.motor.config.pre_calibrated = False
-                odrvs[leg][joint].axis0.encoder.config.pre_calibrated = False
-                odrvs[leg][joint].axis1.motor.config.pre_calibrated = False
-                odrvs[leg][joint].axis1.encoder.config.pre_calibrated = False
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            #motor current limit
-            odrvs[leg][joint].axis0.motor.config.current_lim = 4
-            odrvs[leg][joint].axis1.motor.config.current_lim = 4
+    #brake resistance
+    odrvs[0].config.brake_resistance = 0
+    odrvs[1].config.brake_resistance = 0
 
-            #pole pairs
-            odrvs[leg][joint].axis0.motor.config.pole_pairs = 4
-            odrvs[leg][joint].axis1.motor.config.pole_pairs = 4
+    for axis in axes:
+        if odrvs[leg][joint] == None:
+            continue
+        if(reset):
+            axis.motor.config.pre_calibrated = False
+            axis.encoder.config.pre_calibrated = False
 
-            odrvs[leg][joint].axis0.controller.config.vel_limit = 600000 #50000 counts/second is 1/8 revolution per second
-            odrvs[leg][joint].axis1.controller.config.vel_limit = 600000 
-            # 0.0612 [(revolutions/second)/Volt], 400000 counts per revolution
-            # Max speed is 1.35 Revolutions/second, or 539000counts/second
-            odrvs[leg][joint].axis0.motor.config.motor_type = MOTOR_TYPE_HIGH_CURRENT
-            odrvs[leg][joint].axis1.motor.config.motor_type = MOTOR_TYPE_HIGH_CURRENT
-            odrvs[leg][joint].axis0.encoder.config.cpr = 4000
-            odrvs[leg][joint].axis1.encoder.config.cpr = 4000
-            odrvs[leg][joint].axis0.encoder.config.use_index = True 
-            odrvs[leg][joint].axis1.encoder.config.use_index = True
+        #motor current limit
+        axis.motor.config.current_lim = 4
 
-            #motor calibration current
-            odrvs[leg][joint].axis0.motor.config.calibration_current = 4
-            odrvs[leg][joint].axis1.motor.config.calibration_current = 4
+        #pole pairs
+        axis.motor.config.pole_pairs = 4
 
-            #brake resistance
-            odrvs[leg][joint].config.brake_resistance = 0
+        axis.controller.config.vel_limit = 600000 #50000 counts/second is 1/8 revolution per second
 
-            # Change velocity pll bandwidth high temporarily to ensure calibration works well
-            #odrvs[leg][joint].axis0.encoder.set_pll_bandwidth(1570)
-            #odrvs[leg][joint].axis1.encoder.set_pll_bandwidth(1570)
+        # 0.0612 [(revolutions/second)/Volt], 400000 counts per revolution
+        # Max speed is 1.35 Revolutions/second, or 539000counts/second
+        axis.motor.config.motor_type = MOTOR_TYPE_HIGH_CURRENT
+        axis.encoder.config.cpr = 4000
+        axis.encoder.config.use_index = True
 
-            #axis state
-            if(odrvs[leg][joint].axis0.motor.config.pre_calibrated == False):
-                odrvs[leg][joint].axis0.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
-            if(odrvs[leg][joint].axis1.motor.config.pre_calibrated == False):
-                odrvs[leg][joint].axis1.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+        #motor calibration current
+        axis.motor.config.calibration_current = 2
+
+        #axis state
+        if(axis.motor.config.pre_calibrated == False):
+            axis.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
     print("Done doing setup.")
     time.sleep(20)
     print("Saving Configuration...")
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            errorFlag = 0
-            if odrvs[leg][joint] == None:
-                continue
-            odrvs[leg][joint].axis0.motor.config.pre_calibrated = True
-            odrvs[leg][joint].axis1.motor.config.pre_calibrated = True
-            odrvs[leg][joint].axis0.encoder.config.pre_calibrated = True
-            odrvs[leg][joint].axis0.config.startup_encoder_index_search = True
-            odrvs[leg][joint].axis1.encoder.config.pre_calibrated = True
-            odrvs[leg][joint].axis1.config.startup_encoder_index_search = True
-            
-            #should always be default on all - use these if gets screwed up ever
-            #odrvs[leg][joint].axis0.controller.set_current_controller_bandwidth(157)
-            #odrvs[leg][joint].axis1.controller.set_current_controller_bandwidth(157)
+    for axis in axes:
+        errorFlag = 0
+        if odrvs[leg][joint] == None:
+            continue
+        axis.motor.config.pre_calibrated = True
+        axis.encoder.config.pre_calibrated = True
+        axis.config.startup_encoder_index_search = True
 
-            #Set closed loop gains
-            kP_des = Nm2A*0.25 #2 Nm/rad
-            kD_des = Nm2A*1
+        #motor calibration current FOR INDEX SEARCH
+        axis.motor.config.calibration_current = 0.5
 
-            odrvs[leg][joint].axis0.controller.config.pos_gain = kP_des/kD_des #Convert to Cascaded Gain Structure
-            odrvs[leg][joint].axis1.controller.config.pos_gain = kP_des/kD_des
-            #https://github.com/madcowswe/ODrive/blob/451e79519637fdcf33f220f7dae9a28b15e014ba/Firmware/MotorControl/controller.cpp#L151
-            odrvs[leg][joint].axis0.controller.config.vel_gain = kD_des
-            odrvs[leg][joint].axis1.controller.config.vel_gain = kD_des
-            odrvs[leg][joint].axis0.controller.pos_setpoint = 0
-            odrvs[leg][joint].axis1.controller.pos_setpoint = 0
+        #Set closed loop gains
+        kP_des = Nm2A*0.25 #2 Nm/rad
+        kD_des = Nm2A*1
 
-            #axis state
-            #odrvs[leg][joint].axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-            odrvs[leg][joint].axis0.config.startup_closed_loop_control = True
-            #odrvs[leg][joint].axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-            odrvs[leg][joint].axis1.config.startup_closed_loop_control = True
-            # save configuration
-            odrvs[leg][joint].save_configuration()
-            time.sleep(2)
-            printErrorStates()
+        axis.controller.config.pos_gain = kP_des/kD_des #Convert to Cascaded Gain Structure
+        #https://github.com/madcowswe/ODrive/blob/451e79519637fdcf33f220f7dae9a28b15e014ba/Firmware/MotorControl/controller.cpp#L151
+        axis.controller.config.vel_gain = kD_des
+        axis.controller.pos_setpoint = 0
+
+        #axis state
+        #odrvs[leg][joint].axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        axis.config.startup_closed_loop_control = True
+    # save configuration
+    odrvs[0].save_configuration()
+    odrvs[1].save_configuration()
+    time.sleep(2)
+    printErrorStates()
     try:
-        odrvs[0][0].reboot()
+        odrvs[0].reboot()
     except:
         print('Rebooted 0')
     try:
-        odrvs[0][1].reboot()
+        odrvs[1].reboot()
     except:
         print('Rebooted 1')
     time.sleep(5)
     print("Done initializing! Reconnecting...")
     connect_all()
 
-def make_perm(leg, joint):
-    odrvs[leg][joint].save_configuration()
+def make_perm(ii):
+    odrvs[ii].save_configuration()
 
 def make_perm_all():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            odrvs[leg][joint].save_configuration()
+    for ii in range(len(odrvs)):
+        if odrvs[ii] == None:
+            continue
+        odrvs[ii].save_configuration()
 
-def closed_loop_state_all(perm=False):
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            odrvs[leg][joint].axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-            odrvs[leg][joint].axis1.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-            if(perm):
-                odrvs[leg][joint].save_configuration()
+def closed_loop_state_all():
+    for axis in axes:
+        axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
 
-
-def set_pll(leg, joint, pll_bandwidth, perm =False):
-    odrvs[leg][joint].axis0.encoder.set_pll_bandwidth(pll_bandwidth)
-    odrvs[leg][joint].axis1.encoder.set_pll_bandwidth(pll_bandwidth)
-    if(perm):
-        odrvs[leg][joint].save_configuration()
-
-def reboot(leg, joint):
-    odrvs[leg][joint].reboot()
+def reboot(ii):
+    odrvs[ii].reboot()
 
 def reboot_all():
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            odrvs[leg][joint].reboot()
+    for ii in range(len(odrvs)):
+        if odrvs[leg][joint] == None:
+            continue
+        odrvs[ii].reboot()
 
 def get_pos_all():
-    positions = [[None,None,None],[None,None,None]]
-    for leg in range(len(odrvs)):
-        for joint in range(len(odrvs[0])):
-            if odrvs[leg][joint] == None:
-                continue
-            positions[leg][joint] = [odrvs[leg][joint].axis0.encoder.pos_estimate, odrvs[leg][joint].axis1.encoder.pos_estimate]
+    positions = [None,None,None]
+    ii = 0
+    for axis in axes:
+        ii+=1
+        positions[ii] = axis.encoder.pos_estimate
+        ii+=1
     return positions
