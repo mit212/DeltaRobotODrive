@@ -1,6 +1,5 @@
 #!/usr/bin/python
 #All units are in mm
-import rospy
 from math import sqrt
 from scipy.optimize import fsolve
 import numpy as np
@@ -43,6 +42,7 @@ class deltaRobot(object):
 		self.ub = sqrt(3)/3 * self.sb
 		self.wp = sqrt(3)/6 * self.sp
 		self.up = sqrt(3)/3 * self.sp
+		
 		self.a = self.wp - self.up
 		self.b = self.sp/2 - sqrt(3)/2 * self.wb
 		self.c = self.wp - self.wb/2
@@ -55,17 +55,25 @@ class deltaRobot(object):
 		#x^2 + y^2 + z^2 = m^2 - 2*y*a -L^2 - a^2 - 2*L*(y+a)
 		#x^2 + y^2 + z^2 = -b^2 - c^2 -L^2 - 2*x*b - 2*y*c + m^2 + L*(sqrt(3)*(x+b) + y+c)
 		#x^2 + y^2 + z^2 = -c^2 - L^2 -L*(sqrt(3)*(x-b) - y -c) + 2*x*b + m^2 - 2*y*c
-		self.x
-		self.y
-		self.z
+		(xx, yy, zz)=self.FK((self.currTheta1, self.currTheta2, self.currTheta3))
+		self.x = xx
+		self.y = yy
+		self.z = zz
 	def FK(self,thts):
+		#NOTE: Units are in MILLIMETERS
+		th1, th2, th3 = thts
 		def simulEqns(inp):
-			th1, th2, th3 = inp
-			eq1 = x*x + y*y + z*z - l*l + L*L + a*a + 2*y*a + 2*L*(y+a)*cos(th1) + 2*z*L*sin(th1)
-			eq2 = x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) + 2*z*L*sin(th2)
-			eq3 = x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3) + 2*z*L*sin(th3)
-			return (eq1, eq2, eq3)
-		(xx,yy,zz) = fsolve(simulEqns,(0,0,-0.5))
+			x, y, z = inp
+			l = self.l
+			L = self.L
+			a = self.a
+			b = self.b
+			c = self.c
+			eq1 = 2*z*L*sin(th1) + x*x + y*y + z*z - l*l + L*L + a*a + 2*y*a + 2*L*(y+a)*cos(th1) 
+			eq2 = 2*z*L*sin(th1) * x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) 
+			eq3 = 2*z*L*sin(th1) * x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
+			return (eq1, eq2, eq3)	
+		(xx,yy,zz) = fsolve(simulEqns,(0,0,-500))
 		print(xx, yy, zz)
 		return (xx,yy,zz)
 	def solveTheta1(self, position):
