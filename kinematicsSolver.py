@@ -2,7 +2,12 @@
 #All units are in mm
 import rospy
 from math import sqrt
-from numpy import arctan
+from scipy.optimize import fsolve
+import numpy as np
+arctan = np.arctan
+pi = np.pi
+sin = np.sin
+cos = np.cos
 
 class position(object):
 	def __init__(self, x, y, z):
@@ -53,6 +58,16 @@ class deltaRobot(object):
 		self.x
 		self.y
 		self.z
+	def FK(self,thts):
+		def simulEqns(inp):
+			th1, th2, th3 = inp
+			eq1 = x*x + y*y + z*z - l*l + L*L + a*a + 2*y*a + 2*L*(y+a)*cos(th1) + 2*z*L*sin(th1)
+			eq2 = x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) + 2*z*L*sin(th2)
+			eq3 = x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3) + 2*z*L*sin(th3)
+			return (eq1, eq2, eq3)
+		(xx,yy,zz) = fsolve(simulEqns,(0,0,-0.5))
+		print(xx, yy, zz)
+		return (xx,yy,zz)
 	def solveTheta1(self, position):
 		#Takes in an argument that is position class
 		#Solves for Theta1
