@@ -8,6 +8,11 @@ pi = np.pi
 sin = np.sin
 cos = np.cos
 
+RAD2DEG = 180.0/pi
+DEG2RAD = pi/180.0
+
+# POSITIVE MOTION OF THETA MOVES ARM DOWN! This is opposite the ODrive convention!
+
 class position(object):
 	def __init__(self, x, y, z):
 		self.x = x
@@ -15,11 +20,9 @@ class position(object):
 		self.z = z
 
 class deltaRobot(object):
-	def __init__(self, sb = 220.332, sp = 109.1625, L = 304.8, l = 609.5144, h = 42.8475):
-
-		self.currTheta1 = 0
-		self.currTheta2 = 0
-		self.currTheta3 = 0
+	def __init__(self, sb = 220.332, sp = 109.1625, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
+		
+		(self.currTheta1, self.currTheta2, self.currTheta3) = tht0
 		self.vel1 = 0
 		self.vel2 = 0
 		self.vel3 = 0
@@ -38,13 +41,13 @@ class deltaRobot(object):
 		#planar distance from {0} to a base vertex (ub)
 		#planar distance from {p} to a near platform side (wp)
 		#planar distance from {p} to a platform vertex (up)
-		self.wb = sqrt(3)/6 * self.sb
-		self.ub = sqrt(3)/3 * self.sb
-		self.wp = sqrt(3)/6 * self.sp
-		self.up = sqrt(3)/3 * self.sp
+		self.wb = (sqrt(3)/6) * self.sb
+		self.ub = (sqrt(3)/3) * self.sb
+		self.wp = (sqrt(3)/6) * self.sp
+		self.up = (sqrt(3)/3) * self.sp
 		
-		self.a = self.wp - self.up
-		self.b = self.sp/2 - sqrt(3)/2 * self.wb
+		self.a = self.wb - self.up
+		self.b = self.sp/2 - (sqrt(3)/2) * self.wb
 		self.c = self.wp - self.wb/2
 
 		#Solve for endposition
@@ -56,26 +59,46 @@ class deltaRobot(object):
 		#x^2 + y^2 + z^2 = -b^2 - c^2 -L^2 - 2*x*b - 2*y*c + m^2 + L*(sqrt(3)*(x+b) + y+c)
 		#x^2 + y^2 + z^2 = -c^2 - L^2 -L*(sqrt(3)*(x-b) - y -c) + 2*x*b + m^2 - 2*y*c
 		(xx, yy, zz)=self.FK((self.currTheta1, self.currTheta2, self.currTheta3))
+		print(xx, yy, zz)
 		self.x = xx
 		self.y = yy
 		self.z = zz
+
+		(th1, th2, th3) = self.IK((self.x, self.y, self.z))
+		print(RAD2DEG*th1, RAD2DEG*th2, RAD2DEG*th3)
+	
 	def FK(self,thts):
-		#NOTE: Units are in MILLIMETERS
+		#	Works regardless of length unit. Angle units are in radians. 
 		th1, th2, th3 = thts
 		def simulEqns(inp):
-			x, y, z = inp
+			(x, y, z) = inp
 			l = self.l
 			L = self.L
 			a = self.a
 			b = self.b
 			c = self.c
 			eq1 = 2*z*L*sin(th1) + x*x + y*y + z*z - l*l + L*L + a*a + 2*y*a + 2*L*(y+a)*cos(th1) 
-			eq2 = 2*z*L*sin(th1) * x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) 
-			eq3 = 2*z*L*sin(th1) * x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
-			return (eq1, eq2, eq3)	
-		(xx,yy,zz) = fsolve(simulEqns,(0,0,-500))
-		print(xx, yy, zz)
-		return (xx,yy,zz)
+			eq2 = 2*z*L*sin(th2) + x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) 
+			eq3 = 2*z*L*sin(th3) + x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
+			return (eq1, eq2, eq3)
+		return fsolve(simulEqns,(0,0,-100))
+	
+	def IK(self, endPos):
+		x, y, z = endPos		
+		def simulEqns(inp):
+			(th1, th2, th3) = inp
+			l = self.l
+			L = self.L
+			a = self.a
+			b = self.b
+			c = self.c
+			eq1 = 2*z*L*sin(th1) + x*x + y*y + z*z - l*l + L*L + a*a + 2*y*a + 2*L*(y+a)*cos(th1) 
+			eq2 = 2*z*L*sin(th2) + x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) 
+			eq3 = 2*z*L*sin(th3) + x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
+			return (eq1, eq2, eq3)
+		return fsolve(simulEqns,(0,0,0))
+		
+
 	def solveTheta1(self, position):
 		#Takes in an argument that is position class
 		#Solves for Theta1
@@ -98,7 +121,6 @@ class deltaRobot(object):
 		G3 = position.x**2 + position.y**2 + position.z**2 + self.b**2 + self.c**2 + self.L**2 + 2*(-position.x*self.b + position.y*self.c) - self.l**2
 
 		return self.angleSolver(E3, F3, G3, 3)
-
 
 	def angleSolver(self, E, F, G, thetaID):
 		t1 = (-F + sqrt(E**2 + F**2 - G**2))/(G - E)
