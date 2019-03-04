@@ -1,19 +1,9 @@
-
+#!/usr/bin/python
 """
-Created on Thu Jul 18 15:19:02 2018
+Interface from Python to ODrive
 
-@author: beeman
-"""
-
-
-"""
-Modified on Feb 14, 2019
-
-@author: dgonz
-"""
-
-"""
-helpful odrive functions for xrl state machine
+Daniel J. Gonzalez - dgonz@mit.edu
+2.12 Intro to Robotics Spring 2019
 """
 
 import odrive
@@ -21,19 +11,18 @@ from odrive.enums import *
 import time
 import math
 import fibre
-
 import serial
 import struct
 import signal
 import sys
-#import xrl_kinematics as xrlk
 from dataLogger import *
 
+pi = 3.1415927
 in2mm = 25.4
 mm2in = 1/in2mm
 in2m = in2mm/1000
 
-Nm2A = 0.00000604#N*m/radian to A/count
+Nm2A = 0.00000604 #N*m/radian to A/count
 #https://www.wolframalpha.com/input/?i=(1+N*m%2Fradian)*(2*pi+radians%2F400000)*(1%2F(2.6+N*m%2FA))
 
 zeroVec = [[[0,0],[0,0]]]
@@ -47,20 +36,34 @@ home_kd = [[[0,0],[0,0]]]
 kPd = [[[0,0],[0,0]]]
 kDd = [[[0,0],[0,0]]]
 
-gear_ratios = [32.0/15.0, 48.0/15.0, 36.0/15.0]
-CPR2RAD = (2*math.pi/16384.0)
-thtActual = [[[0,0],[0,0],[0,0]],[[0,0], [0,0], [0,0]]]
-velActual =   [[[0,0],[0,0],[0,0]],[[0,0], [0,0], [0,0]]]
-curCommand = [[[0,0],[0,0],[0,0]],[[0,0], [0,0], [0,0]]]
+CPR2RAD = (2*math.pi/400000)
 myLogger = dataLogger('data.txt')
 
 odrvs = [None, None]
 '''[[ODrive 0, ODrive 1]]'''
-usb_serials = ['2061377C3548', '208637853548'] #, 2087377B3548
+usb_serials = ['2061377C3548', '208637853548']
 axes = [None, None, None]
 axis0 = None
 axis1 = None
 axis2 = None
+
+def rad2Count(angle):
+    try:
+        return [100000-ang/CPR2RAD for ang in angle]
+    except TypeError:
+        return 100000-angle/CPR2RAD
+
+def r2c(angle):
+    return rad2Count(angle)
+
+def count2Rad(count):
+    try:
+        return [(100000-cnt)*CPR2RAD for cnt in count]
+    except TypeError:
+        return (100000-count)*CPR2RAD
+
+def c2r(count):
+    return count2Rad(count)
 
 def print_controllers():
     for axis in axes:
@@ -105,11 +108,8 @@ def connect_all():
     axes[0] = axis0
     axes[1] = axis1
     axes[2] = axis2
-    # print("axis0: " + str(axis0.encoder.config.idx_search_speed))
-    # print("axis1: " + str(axis1.encoder.config.idx_search_speed))
-    # print("axis2: " + str(axis2.encoder.config.idx_search_speed))
 
-def reboot(ii):   
+def reboot(ii):
     try:
         odrvs[ii].reboot()
     except:
@@ -231,6 +231,17 @@ def vel_test_all(amt = 30000, mytime = 2):
     print(4)
     #print_all()
 
+def trajMoveCnt(posDesired = (10000, 10000, 10000), velDesired = 50000, accDesired = 50000):
+    for ii in range(0,3):
+        axis = axes[ii]
+        axis.trap_traj.config.vel_limit = velDesired #600000 max, 50000 is 1/8 rev per second
+        axis.trap_traj.config.accel_limit = accDesired #50000 is 1/8 rev per second per second
+        axis.trap_traj.config.decel_limit = accDesired
+        axis.controller.move_to_pos(posDesired[ii]) 
+
+def trajMoveRad(posDesired = (0, 0, 0), velDesired = 2*pi/8, accDesired = 2*pi/8):
+    trajMoveCnt(rad2Count(posDesired), rad2Count(velDesired), rad2Count(accDesired))
+
 def test_one(ii = 0, amt = 10000, mytime = 5):
     axis = axes[ii]
     # IF WE ARE USING INDEX, START AT IDLE, THEN CHANGE TO CLOSED LOOP!!!!
@@ -298,8 +309,8 @@ def test_all(amt = 50000, mytime = 2):
         print("detect current " + str(axis.motor.current_control.Iq_measured))
     time.sleep(mytime)
     print(3)
-    for axis in axes:
-        axis.requested_state = AXIS_STATE_IDLE
+    #for axis in axes:
+    #    axis.requested_state = AXIS_STATE_IDLE
     #print_all()
     time.sleep(0.25)
     #axis.requested_state = AXIS_STATE_IDLE
@@ -355,7 +366,7 @@ def full_init(reset = True):
         axis.encoder.config.pre_calibrated = False
 
         #motor calibration current
-        axis.motor.config.calibration_current = 5 #2
+        axis.motor.config.calibration_current = 5
 
         #axis state
         if(axis.motor.config.pre_calibrated == False):
@@ -370,7 +381,7 @@ def full_init(reset = True):
         axis.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
 
         #motor calibration current FOR INDEX SEARCH
-        axis.motor.config.calibration_current = 5 #0.5
+        axis.motor.config.calibration_current = 5
 
         #Set closed loop gains
         kP_des = Nm2A*100 # pos_gain 2
@@ -415,11 +426,13 @@ def closed_loop_state_all():
     for axis in axes:
         axis.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
 
-def get_pos_all():
+def get_cnt_all():
     positions = [None,None,None]
     ii = 0
     for axis in axes:
-        ii+=1
         positions[ii] = axis.encoder.pos_estimate
         ii+=1
     return positions
+
+def get_rad_all():
+    return count2Rad(get_cnt_all())

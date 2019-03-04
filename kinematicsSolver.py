@@ -1,10 +1,21 @@
 #!/usr/bin/python
-#All units are in mm
+"""
+Delta Robot Kinematics
+
+Jerry Ng - jerryng@mit.edu
+Daniel J. Gonzalez - dgonz@mit.edu
+2.12 Intro to Robotics Spring 2019
+"""
+
 from math import sqrt
 from scipy.optimize import fsolve
 import numpy as np
-arctan = np.arctan
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+import time
+
 pi = np.pi
+arctan = np.arctan
 sin = np.sin
 cos = np.cos
 
@@ -19,9 +30,18 @@ class position(object):
 		self.y = y
 		self.z = z
 
-class deltaRobot(object):
-	def __init__(self, sb = 220.332, sp = 109.1625, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
-		
+def rotz(theta):
+	return np.matrix([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta),  np.cos(theta), 0], [0, 0, 1]])
+
+def roty(theta):
+	return np.matrix([[np.cos(theta), 0, np.sin(theta)],[0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+
+def rotx(theta):
+	return np.matrix([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
+
+class deltaSolver(object):
+	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
+		# 109.9852mm is 2 * 2.5" * cos(30)
 		(self.currTheta1, self.currTheta2, self.currTheta3) = tht0
 		self.vel1 = 0
 		self.vel2 = 0
@@ -31,7 +51,7 @@ class deltaRobot(object):
 		#upper legs length (L)
 		#lower legs parallelogram length (l)
 		#lower legs parallelogram width (h)
-		self.sb = sb
+		self.sb = sb #2.5 inches
 		self.sp = sp
 		self.L = L
 		self.l = l
@@ -50,22 +70,98 @@ class deltaRobot(object):
 		self.b = self.sp/2 - (sqrt(3)/2) * self.wb
 		self.c = self.wp - self.wb/2
 
-		#Solve for endposition
-		#x^2 + y^2 + z^2 = l^2 - 2*y*a -L^2 - a^2 - 2*L*(y+a)
-		#x^2 + y^2 + z^2 = -b^2 - c^2 -L^2 - 2*x*b - 2*y*c + l^2 + L*(sqrt(3)*(x+b) + y+c)
-		#x^2 + y^2 + z^2 = -c^2 - L^2 -L*(sqrt(3)*(x-b) - y -c) + 2*x*b + l^2 - 2*y*c
-		#REWRITTEN
-		#x^2 + y^2 + z^2 = m^2 - 2*y*a -L^2 - a^2 - 2*L*(y+a)
-		#x^2 + y^2 + z^2 = -b^2 - c^2 -L^2 - 2*x*b - 2*y*c + m^2 + L*(sqrt(3)*(x+b) + y+c)
-		#x^2 + y^2 + z^2 = -c^2 - L^2 -L*(sqrt(3)*(x-b) - y -c) + 2*x*b + m^2 - 2*y*c
 		(xx, yy, zz)=self.FK((self.currTheta1, self.currTheta2, self.currTheta3))
-		print(xx, yy, zz)
+		#print(xx, yy, zz)
 		self.x = xx
 		self.y = yy
 		self.z = zz
-
 		(th1, th2, th3) = self.IK((self.x, self.y, self.z))
-		print(RAD2DEG*th1, RAD2DEG*th2, RAD2DEG*th3)
+		#print(RAD2DEG*th1, RAD2DEG*th2, RAD2DEG*th3)
+		self.fig = plt.figure()
+
+		self.plot((xx,yy,zz))
+	
+	def plot(self, pos = (0, 0, -500)):
+		(x, y, z) = pos
+		ax = self.fig.add_subplot(111, projection='3d')
+		ax.set_xlim3d(-400, 400)
+		ax.set_ylim3d(-400, 400)
+		ax.set_zlim3d(-1000, 400)
+		plt.ion()
+		plt.show()
+		ax.set_xlabel('X [mm]')
+		ax.set_ylabel('Y [mm]')
+		ax.set_zlabel('Z [mm]')
+		#Draw Origin
+		ax.scatter(0,0,0, marker = '+', c = 'k')
+
+		#Draw Base
+		baseA = np.matrix([-self.sb/2,-self.wb,0]).transpose()
+		baseB = np.matrix([self.sb/2,-self.wb,0]).transpose()
+		baseC = np.matrix([0,self.ub,0]).transpose()
+		basePts = np.hstack((baseA, baseB, baseC, baseA))
+		basePts = np.array(basePts)
+		ax.plot(basePts[0,:] ,basePts[1,:], basePts[2,:],c='dimgrey')
+		
+		#Plot Endpoint
+		p = np.array([x, y, z])
+		a1 = p+np.array([100,0,0])
+		a2 = p+np.array([0,100,0])
+		a3 = p+np.array([0,0,100])
+		self.xEnd = ax.plot([p[0], a1[0]], [p[1], a1[1]], [p[2], a1[2]], c='r', marker = '<')
+		self.yEnd = ax.plot([p[0], a2[0]], [p[1], a2[1]], [p[2], a2[2]], c='g', marker = '<')
+		self.zEnd = ax.plot([p[0], a3[0]], [p[1], a3[1]], [p[2], a3[2]], c='b', marker = '<')
+
+		#Plot End Points
+		p = np.array([[x, y, z]]).T
+		BTp1 = p+np.array([[0, -self.up, 0]]).T
+		BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
+		BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
+		print(BTp1)
+		BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
+		self.myPts = ax.plot(BTp[0,:], BTp[1,:], BTp[2,:],c='darkviolet')
+
+		#Plot linkages
+		# TODO
+
+		#Update the Figure
+		self.fig.canvas.draw_idle()
+		plt.pause(0.0001)
+
+	def updatePlot(self, pos = (0, 0, -500)):
+		(x, y, z) = pos
+
+		# Plot Endpoint
+		p = np.array([x, y, z])
+		a1 = p+np.array([100,0,0])
+		a2 = p+np.array([0,100,0])
+		a3 = p+np.array([0,0,100])
+		self.updateThings(self.xEnd,[p[0], a1[0]], [p[1], a1[1]],[p[2], a1[2]])
+		self.updateThings(self.yEnd,[p[0], a2[0]], [p[1], a2[1]],[p[2], a2[2]])
+		self.updateThings(self.zEnd,[p[0], a3[0]], [p[1], a3[1]],[p[2], a3[2]])
+
+		#Plot End Points
+		p = np.array([[x, y, z]]).T
+		BTp1 = p+np.array([[0, -self.up, 0]]).T
+		BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
+		BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
+		BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
+		self.updateThings(self.myPts, BTp[0,:], BTp[1,:], BTp[2,:])
+
+		#Update the Figure
+		self.fig.canvas.draw_idle()
+		plt.pause(0.1)
+	
+	def update_lines(self, num, dataLines, lines) :
+		for line, data in zip(lines, dataLines) :
+			# note: there is no .set_data() for 3 dim data...
+			line.set_data(data[0:2, num:num+2])
+			line.set_3d_properties(data[2,num:num+2])
+		return lines
+
+	def updateThings(self, linesObj, xPts, yPts, zPts):
+		linesObj[0].set_data(xPts, yPts)
+		linesObj[0].set_3d_properties(zPts)
 	
 	def FK(self,thts):
 		#	Works regardless of length unit. Angle units are in radians. 
@@ -97,7 +193,12 @@ class deltaRobot(object):
 			eq3 = 2*z*L*sin(th3) + x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
 			return (eq1, eq2, eq3)
 		return fsolve(simulEqns,(0,0,0))
-		
+	
+	def ik(self,endPos):
+		return self.IK(endPos)
+
+	def fk(self,thts):
+		return self.FK(thts)
 
 	def solveTheta1(self, position):
 		#Takes in an argument that is position class
@@ -175,8 +276,23 @@ class deltaRobot(object):
 
 		#return a vector of the angle velocities. [omega1, omega2, omega3]
 		return thetadot
-	
-			
 
 
-
+def testPlot():
+	kin = deltaSolver()
+	kin.plot()
+	time.sleep(1)
+	kin.updatePlot((0, 100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((100, 100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((100, -100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((-100, -100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((-100, 100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((0, 100, kin.z))
+	time.sleep(1)
+	kin.updatePlot((0, 0, kin.z))
+	time.sleep(1)
