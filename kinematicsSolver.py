@@ -31,13 +31,13 @@ class position(object):
 		self.z = z
 
 def rotz(theta):
-	return np.matrix([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta),  np.cos(theta), 0], [0, 0, 1]])
+	return np.array([[np.cos(theta), -np.sin(theta), 0], [np.sin(theta),  np.cos(theta), 0], [0, 0, 1]])
 
 def roty(theta):
-	return np.matrix([[np.cos(theta), 0, np.sin(theta)],[0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+	return np.array([[np.cos(theta), 0, np.sin(theta)],[0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
 
 def rotx(theta):
-	return np.matrix([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
+	return np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
 
 class deltaSolver(object):
 	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
@@ -75,7 +75,9 @@ class deltaSolver(object):
 		self.x = xx
 		self.y = yy
 		self.z = zz
+		self.endpt = (self.x, self.y, self.z)
 		(th1, th2, th3) = self.IK((self.x, self.y, self.z))
+		self.thts = (th1, th2, th3)
 		#print(RAD2DEG*th1, RAD2DEG*th2, RAD2DEG*th3)
 		self.fig = plt.figure()
 
@@ -83,6 +85,8 @@ class deltaSolver(object):
 	
 	def plot(self, pos = (0, 0, -500)):
 		(x, y, z) = pos
+		thts = self.ik(pos)
+
 		ax = self.fig.add_subplot(111, projection='3d')
 		ax.set_xlim3d(-400, 400)
 		ax.set_ylim3d(-400, 400)
@@ -96,12 +100,12 @@ class deltaSolver(object):
 		ax.scatter(0,0,0, marker = '+', c = 'k')
 
 		#Draw Base
-		baseA = np.matrix([-self.sb/2,-self.wb,0]).transpose()
-		baseB = np.matrix([self.sb/2,-self.wb,0]).transpose()
-		baseC = np.matrix([0,self.ub,0]).transpose()
-		basePts = np.hstack((baseA, baseB, baseC, baseA))
+		base1 = np.matrix([-self.sb/2,-self.wb,0]).transpose()
+		base2 = np.matrix([self.sb/2,-self.wb,0]).transpose()
+		base3 = np.matrix([0,self.ub,0]).transpose()
+		basePts = np.hstack((base1, base2, base3, base1))
 		basePts = np.array(basePts)
-		ax.plot(basePts[0,:] ,basePts[1,:], basePts[2,:],c='dimgrey')
+		ax.plot(basePts[0,:] ,basePts[1,:], basePts[2,:],c='k')
 		
 		#Plot Endpoint
 		p = np.array([x, y, z])
@@ -112,17 +116,27 @@ class deltaSolver(object):
 		self.yEnd = ax.plot([p[0], a2[0]], [p[1], a2[1]], [p[2], a2[2]], c='g', marker = '<')
 		self.zEnd = ax.plot([p[0], a3[0]], [p[1], a3[1]], [p[2], a3[2]], c='b', marker = '<')
 
-		#Plot End Points
+		#Plot End Platform
 		p = np.array([[x, y, z]]).T
 		BTp1 = p+np.array([[0, -self.up, 0]]).T
 		BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
 		BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
-		print(BTp1)
 		BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
 		self.myPts = ax.plot(BTp[0,:], BTp[1,:], BTp[2,:],c='darkviolet')
 
 		#Plot linkages
-		# TODO
+		pt1B = np.array([[0,-self.wb,0]]).T
+		pt1J = pt1B+np.array([[0, -self.L*cos(-thts[0]), self.L*sin(-thts[0])]]).T
+		pt1P = BTp1
+		pt2B = np.dot(rotz(2*np.pi/3), pt1B)
+		pt2J = pt2B+np.dot(rotz(2*np.pi/3), np.array([[0, -self.L*cos(-thts[1]), self.L*sin(-thts[1])]]).T)
+		pt2P = BTp2
+		pt3B = np.dot(rotz(4*np.pi/3) , pt1B)
+		pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-self.thts[2])]]).T)
+		pt3P = BTp3
+		self.link1 = ax.plot([pt1B[0][0], pt1J[0][0], pt1P[0][0]], [pt1B[1][0], pt1J[1][0], pt1P[1][0]], [pt1B[2][0], pt1J[2][0], pt1P[2][0]], c='dimgrey')
+		self.link2 = ax.plot([pt2B[0][0], pt2J[0][0], pt2P[0][0]], [pt2B[1][0], pt2J[1][0], pt2P[1][0]], [pt2B[2][0], pt2J[2][0], pt2P[2][0]], c='dimgrey')
+		self.link3 = ax.plot([pt3B[0][0], pt3J[0][0], pt3P[0][0]], [pt3B[1][0], pt3J[1][0], pt3P[1][0]], [pt3B[2][0], pt3J[2][0], pt3P[2][0]], c='dimgrey')
 
 		#Update the Figure
 		self.fig.canvas.draw_idle()
@@ -130,7 +144,7 @@ class deltaSolver(object):
 
 	def updatePlot(self, pos = (0, 0, -500)):
 		(x, y, z) = pos
-
+		thts = self.ik(pos)
 		# Plot Endpoint
 		p = np.array([x, y, z])
 		a1 = p+np.array([100,0,0])
@@ -147,6 +161,20 @@ class deltaSolver(object):
 		BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
 		BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
 		self.updateThings(self.myPts, BTp[0,:], BTp[1,:], BTp[2,:])
+
+		#Plot linkages
+		pt1B = np.array([[0,-self.wb,0]]).T
+		pt1J = pt1B+np.array([[0, -self.L*cos(-thts[0]), self.L*sin(-thts[0])]]).T
+		pt1P = BTp1
+		pt2B = np.dot(rotz(2*np.pi/3), pt1B)
+		pt2J = pt2B+np.dot(rotz(2*np.pi/3), np.array([[0, -self.L*cos(-thts[1]), self.L*sin(-thts[1])]]).T)
+		pt2P = BTp2
+		pt3B = np.dot(rotz(4*np.pi/3) , pt1B)
+		pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-self.thts[2])]]).T)
+		pt3P = BTp3
+		self.updateThings(self.link1, [pt1B[0][0], pt1J[0][0], pt1P[0][0]], [pt1B[1][0], pt1J[1][0], pt1P[1][0]], [pt1B[2][0], pt1J[2][0], pt1P[2][0]])
+		self.updateThings(self.link2, [pt2B[0][0], pt2J[0][0], pt2P[0][0]], [pt2B[1][0], pt2J[1][0], pt2P[1][0]], [pt2B[2][0], pt2J[2][0], pt2P[2][0]])
+		self.updateThings(self.link3, [pt3B[0][0], pt3J[0][0], pt3P[0][0]], [pt3B[1][0], pt3J[1][0], pt3P[1][0]], [pt3B[2][0], pt3J[2][0], pt3P[2][0]])
 
 		#Update the Figure
 		self.fig.canvas.draw_idle()
@@ -271,8 +299,8 @@ class deltaSolver(object):
 		B = np.matrix([[b11, 0, 0], 
 			[0,b22,0], 
 			[0,0, b33]])
-		AB = np.matmul(A,B)
-		thetadot = np.matmul(AB, inputVec)
+		AB = np.dot(A,B)
+		thetadot = np.dot(AB, inputVec)
 
 		#return a vector of the angle velocities. [omega1, omega2, omega3]
 		return thetadot

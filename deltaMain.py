@@ -7,7 +7,6 @@ Daniel J. Gonzalez - dgonz@mit.edu
 """
 
 import robot212_odrive as bot
-#from robot212_odrive import 
 import kinematicsSolver as kin
 import time
 import numpy as np
@@ -18,7 +17,7 @@ deltaKin = kin.deltaSolver()
 
 if __name__ == "__main__":
     isRunning = True
-    input("Press Enter to continue...")
+    input("Press Enter to begin...")
     tStart = time.time()
     while isRunning:
         t = time.time() - tStart
@@ -35,7 +34,6 @@ if __name__ == "__main__":
             print((xD, yD, zD), thtDes)
             deltaKin.updatePlot((xD, yD, zD))
             bot.trajMoveRad(thtDes, 2*pi/8, 2*pi/8)
-            # bot.trajMoveRad(thtDes)
         elif t>10 and t<20:
             r = 10 - ((t-10)/10)*10 #mm
             freq = 0.5#Hz
