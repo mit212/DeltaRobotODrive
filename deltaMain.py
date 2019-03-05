@@ -5,8 +5,15 @@ Delta Robot Main Interface
 Daniel J. Gonzalez - dgonz@mit.edu
 2.12 Intro to Robotics Spring 2019
 """
+#####################################
+realBot = False
+#####################################
 
-import robot212_odrive as bot
+if realBot:
+    import robot212_odrive as bot
+else:
+    import robot212_virtual as bot
+
 import kinematicsSolver as kin
 import time
 import numpy as np
