@@ -36,25 +36,31 @@ if __name__ == "__main__":
             if t > 20:
                 isRunning = False
             elif t<10:
+                #   Define Trajectory
                 r = (t/10)*100 #mm
                 freq = 0.5#Hz
                 xD = r*np.cos((freq*2*np.pi)*t)
                 yD = r*np.sin((freq*2*np.pi)*t)
                 zD = zD0 - (t/10)*300
+
+                #   Solve for and execute trajectory, print the endpoint and joint angles, update the plot. 
                 thtDes = deltaKin.IK((xD, yD, zD))
+                bot.trajMoveRad(thtDes, 2*pi/8, 2*pi/8) # (Desired Angles [rad], Max Velocity [rad/s], Acceleration/Deceleration [rad/s^2])
                 print((xD, yD, zD), thtDes)
                 deltaKin.updatePlot((xD, yD, zD))
-                bot.trajMoveRad(thtDes, 2*pi/8, 2*pi/8)
             elif t>10 and t<20:
+                #   Define Trajectory
                 r = 100 - ((t-10)/10)*100 #mm
                 freq = 0.5#Hz
                 xD = r*np.cos((freq*2*np.pi)*t)
                 yD = r*np.sin((freq*2*np.pi)*t)
                 zD = zD0 - 300 + ((t-10)/10)*300
+
+                #   Solve for and execute trajectory, print the endpoint and joint angles, update the plot. 
                 thtDes = deltaKin.IK((xD, yD, zD))
+                bot.trajMoveRad(thtDes, 2*pi/8, 2*pi/8) # (Desired Angles [rad], Max Velocity [rad/s], Acceleration/Deceleration [rad/s^2])
                 print((xD, yD, zD), thtDes)
                 deltaKin.updatePlot((xD, yD, zD))
-                bot.trajMoveRad(thtDes, 2*pi/8, 2*pi/8)
         inp = input("Press ENTER to run again or q+ENTER to quit...")
         if inp == 'q':
             mainRunning = False
