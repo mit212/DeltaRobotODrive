@@ -15,7 +15,6 @@ import serial
 import struct
 import signal
 import sys
-from dataLogger import *
 
 pi = 3.1415927
 in2mm = 25.4
@@ -37,7 +36,6 @@ kPd = [[[0,0],[0,0]]]
 kDd = [[[0,0],[0,0]]]
 
 CPR2RAD = (2*math.pi/400000)
-myLogger = dataLogger('data.txt')
 
 odrvs = [None, None]
 '''[[ODrive 0, ODrive 1]]'''

@@ -71,14 +71,12 @@ class deltaSolver(object):
 		self.c = self.wp - self.wb/2
 
 		(xx, yy, zz)=self.FK((self.currTheta1, self.currTheta2, self.currTheta3))
-		#print(xx, yy, zz)
 		self.x = xx
 		self.y = yy
 		self.z = zz
 		self.endpt = (self.x, self.y, self.z)
 		(th1, th2, th3) = self.IK((self.x, self.y, self.z))
 		self.thts = (th1, th2, th3)
-		#print(RAD2DEG*th1, RAD2DEG*th2, RAD2DEG*th3)
 		self.fig = plt.figure()
 
 		self.plot((xx,yy,zz))
@@ -90,7 +88,8 @@ class deltaSolver(object):
 		ax = self.fig.add_subplot(111, projection='3d')
 		ax.set_xlim3d(-400, 400)
 		ax.set_ylim3d(-400, 400)
-		ax.set_zlim3d(-1000, 400)
+		ax.set_zlim3d(-900, 100)
+		plt.gca().set_aspect('equal', adjustable='box')
 		plt.ion()
 		plt.show()
 		ax.set_xlabel('X [mm]')
@@ -170,7 +169,7 @@ class deltaSolver(object):
 		pt2J = pt2B+np.dot(rotz(2*np.pi/3), np.array([[0, -self.L*cos(-thts[1]), self.L*sin(-thts[1])]]).T)
 		pt2P = BTp2
 		pt3B = np.dot(rotz(4*np.pi/3) , pt1B)
-		pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-self.thts[2])]]).T)
+		pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-thts[2])]]).T)
 		pt3P = BTp3
 		self.updateThings(self.link1, [pt1B[0][0], pt1J[0][0], pt1P[0][0]], [pt1B[1][0], pt1J[1][0], pt1P[1][0]], [pt1B[2][0], pt1J[2][0], pt1P[2][0]])
 		self.updateThings(self.link2, [pt2B[0][0], pt2J[0][0], pt2P[0][0]], [pt2B[1][0], pt2J[1][0], pt2P[1][0]], [pt2B[2][0], pt2J[2][0], pt2P[2][0]])
@@ -324,3 +323,6 @@ def testPlot():
 	time.sleep(1)
 	kin.updatePlot((0, 0, kin.z))
 	time.sleep(1)
+
+if __name__ == "__main__":
+	testPlot()
