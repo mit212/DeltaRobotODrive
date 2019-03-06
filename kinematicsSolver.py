@@ -40,8 +40,9 @@ def rotx(theta):
 	return np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
 
 class deltaSolver(object):
-	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
+	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0), swivel_limit):
 		# 109.9852mm is 2 * 2.5" * cos(30)
+		self.swivel_limit = 20
 		(self.currTheta1, self.currTheta2, self.currTheta3) = tht0
 		self.vel1 = 0
 		self.vel2 = 0
@@ -226,6 +227,43 @@ class deltaSolver(object):
 
 	def fk(self,thts):
 		return self.FK(thts)
+
+	def check_constraints(self, motorID, endPos, theta1):
+		#endpos is a tuple
+
+		#assign lengths
+		length_to_motor = self.wb
+		length_to_attach = self.up
+
+		#create an array of the end position
+		xe = np.array([endpo[0], endpos[1], endpos[2]])
+
+		#all rotation matrices along the z axis
+		if(motorID == 1):
+			#rotation matrix is the identity
+			rotation_matrix = np.array([[1, 0, 0],[0, 1, 0 ],[0, 0, 1]])
+		if(motorID == 2):
+			#rotation_matrix is rotation 120 degrees
+			rotation_matrix = np.array([[np.cos(2*pi/3), -np.sin(2*pi/3), 0],[np.sin(2*pi/3), np.cos(2*pi/3), 0 ],[0, 0, 1]])
+		if(motorID == 3):
+			#rotation matrix is rotation -120 degrees
+			rotation_matrix = np.array([[np.cos(-2*pi/3), -np.sin(-2*pi/3), 0],[np.sin(-2*pi/3), np.cos(-2*pi/3), 0 ],[0, 0, 1]])
+
+		#rotate the end effector position so that the math is easy
+		xe = np.dot(rotation_matrix,xe)
+
+		#Find the end position of the attachment
+		bvec = xe - np.array([0, length_to_attach, 0])
+		x0 = np.array([length_to_motor, 0, 0])
+		#Solve two equations to solve for theta3
+		theta2 = np.arcsin((bvec[2] - x0[2] + self.L*np.cos(theta1))/(-self.l))
+		theta3 = np.arcsin((bvec[0] - x0[0])/(self.l*np.cos(theta2)))
+		if(theta3 > self.swivel_limit):
+			return False
+
+		return True
+
+
 
 def testPlot():
 	kin = deltaSolver()
