@@ -239,14 +239,14 @@ class deltaSolver(object):
 
 		#all rotation matrices along the z axis
 		if(motorID == 1):
-			#rotation matrix is the identity
-			rotation_matrix = np.array([[1, 0, 0],[0, 1, 0 ],[0, 0, 1]])
+			#rotation matrix is rotation -90 degrees
+			rotation_matrix = rotz(-pi/2)
 		if(motorID == 2):
-			#rotation_matrix is rotation 120 degrees
-			rotation_matrix = np.array([[np.cos(2*pi/3), -np.sin(2*pi/3), 0],[np.sin(2*pi/3), np.cos(2*pi/3), 0 ],[0, 0, 1]])
+			#rotation_matrix is rotation 120-90 degrees
+			rotation_matrix = rotz(2*pi/3-pi/2)
 		if(motorID == 3):
-			#rotation matrix is rotation -120 degrees
-			rotation_matrix = np.array([[np.cos(-2*pi/3), -np.sin(-2*pi/3), 0],[np.sin(-2*pi/3), np.cos(-2*pi/3), 0 ],[0, 0, 1]])
+			#rotation matrix is rotation 240-90 degrees
+			rotation_matrix = rotz(4*pi/3-pi/2)
 
 		#rotate the end effector position so that the math is easy
 		xe = np.dot(rotation_matrix,xe)

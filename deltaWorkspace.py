@@ -30,12 +30,13 @@ if __name__ == "__main__":
             t = time.time() - tStart
             #-400, 400 is the limits of xy plane on the plotter which you can see on kinematicsSolver.py
             #-900, 100 is the limits of the z axis on the plotter which you can see on kinematicsSolver.py
-            xvec = np.linspace(-400, 400, 10)
-            yvec = np.linspace(-400, 400, 10)
-            zvec = np.linspace(-900, 100, 10)
-            for i in range(10):
-                for j in range(10):
-                    for k in range(10):
+            density = 15
+            xvec = np.linspace(-400, 400, density)
+            yvec = np.linspace(-400, 400, density)
+            zvec = np.linspace(-900, 100, density)
+            for i in range(density):
+                for j in range(density):
+                    for k in range(density):
                         # create grid
                         xD = xvec[i]
                         yD = yvec[j]
@@ -45,7 +46,8 @@ if __name__ == "__main__":
                         xend = deltaKin.FK(thtDes)
                         if (abs(xend[0] - xD) > 0.1 or abs(xend[1] - yD) > 0.1 or abs(xend[2] - zD > 0.1)):
                             #Does not work so plot red
-                            deltaKin.updatePlot((xD, yD, zD), 'red')
+                            #deltaKin.updatePlot((xD, yD, zD), 'red')
+                            print('bad point')
                         elif(check_constraints):
                             #check_constraints ONLY checks the physical constraint of the ball_swivel joint. 
                             #You can see the changes that will occur to the workspace by editting kinematicsSolver.py
@@ -55,7 +57,8 @@ if __name__ == "__main__":
                             if(motor1 and motor2 and motor3):
                                 deltaKin.updatePlot((xD, yD, zD), 'blue')
                             else:
-                                deltaKin.updatePlot((xD, yD, zD), 'green')
+                                #deltaKin.updatePlot((xD, yD, zD), 'green')
+                                print('bad point')
                         else:
                             #plot blue because it does work
                             deltaKin.updatePlot((xD, yD, zD), 'blue')
