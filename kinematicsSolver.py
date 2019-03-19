@@ -40,12 +40,12 @@ def rotx(theta):
 	return np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
 
 class deltaSolver(object):
-	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0), swivel_limit = 20):
+	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0), swivel_limit = 10*DEG2RAD):
 		# 109.9852mm is 2 * 2.5" * cos(30)
 
 		#swivel_limit is the physical constraint of the system's current design. 
 		#different ball joints have different swivel limits
-		self.swivel_limit = 0.349066 #20 degrees in radians
+		self.swivel_limit = swivel_limit
 		(self.currTheta1, self.currTheta2, self.currTheta3) = tht0
 		self.vel1 = 0
 		self.vel2 = 0
@@ -204,7 +204,7 @@ class deltaSolver(object):
 			eq2 = 2*z*L*sin(th2) + x*x + y*y + z*z - l*l + L*L + b*b + c*c + 2*x*b + 2*y*c - L*(sqrt(3)*(x+b)+y+c)*cos(th2) 
 			eq3 = 2*z*L*sin(th3) + x*x + y*y + z*z - l*l + L*L + b*b + c*c - 2*x*b + 2*y*c + L*(sqrt(3)*(x-b)-y-c)*cos(th3)
 			return (eq1, eq2, eq3)
-		return fsolve(simulEqns,(0,0,-100))
+		return fsolve(simulEqns,(0,0,-500))
 	
 	def IK(self, endPos):
 		x, y, z = endPos		
@@ -257,11 +257,18 @@ class deltaSolver(object):
 		#Solve two equations to solve for theta3
 		theta2 = np.arcsin((bvec[2] - x0[2] + self.L*np.cos(theta1))/(-self.l))
 		theta3 = np.arcsin((bvec[0] - x0[0])/(self.l*np.cos(theta2)))
+		print(theta1*RAD2DEG,theta2*RAD2DEG, (theta1+theta2)*RAD2DEG)
 
 		#theta3 corresponds to the angle of the ball joint
 		if(theta3 > self.swivel_limit):
 			return False
-
+		if(np.isnan(theta3) or np.isnan(theta2)):
+		    return False
+		if(theta1 >= pi/2):
+		    return False
+		if(theta1 <= -pi/2):
+		    return False
+		  
 		return True
 
 
