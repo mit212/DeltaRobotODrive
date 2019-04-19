@@ -91,7 +91,8 @@ class deltaSolver(object):
 		E1 = 2*self.L*(position.y+self.a)
 		F1 = 2*position.z*self.L
 		G1 = position.x**2 + position.y**2 + position.z**2 + self.a**2 + self.L**2 + 2*position.y*self.a - self.l**2
-
+		if(E1 == 0 and G1 == 0):
+			return 0
 		return self.angleSolver(E1, F1, G1, 1)
 
 	def solveTheta2(self, position):
